@@ -37,7 +37,8 @@ class Asteroid:
 			self.dy = self.dy + delta_args[3]
 
 	def draw(self):
-		asteroid = pygame.transform.scale(self.image, (self.radius * 2, self.radius * 2))
+		size = self.radius * 2.0 / 1087
+		asteroid = pygame.transform.rotozoom(self.image, 0, size)
 		self.game.window.blit(asteroid, (self.x - self.radius, self.y - self.radius))
 		# pygame.gfxdraw.aacircle(window, int(self.x), int(self.y), self.size, self.color)
 
@@ -146,17 +147,17 @@ class Asteroid:
 		return accel_x, accel_y
 
 class Block():
-	def __init__(self, game, x, y, id, size=40):
+	def __init__(self, game, x, y, image, id, size=40):
 		self.x, self.y = x, y
 		self.game = game
 		self.size = size
 		self.id = id
 		self.color = [200, 200, 200]
+		self.image = image
 
 	def draw(self):
-		# block = pygame.transform.scale(self.image, (self.radius * 2, self.radius * 2))
-		# self.game.window.blit(asteroid, (self.x - self.radius, self.y - self.radius))
-		pygame.gfxdraw.rectangle(self.game.window, ((int(self.x), int(self.y)), (int(self.size), int(self.size))), self.color)
+		block = pygame.transform.scale(self.image, (self.size, self.size))
+		self.game.window.blit(block, (self.x, self.y))
 
 	def rect(self):
 		return (self.x, self.y, self.size - 5, self.size - 5)
@@ -204,8 +205,7 @@ class Sun(Asteroid):
 		return
 
 	def draw(self):
-		sun = pygame.transform.scale(self.image, (self.radius * 2, self.radius * 2))
-		self.game.window.blit(sun, (self.x - self.radius, self.y - self.radius))
+		self.game.window.blit(self.image, (self.x - self.radius, self.y - self.radius))
 		# pygame.gfxdraw.filled_circle(self.game.window, self.x, self.y, int(self.center_radius), (255, 255, 220))
 
 
@@ -231,11 +231,15 @@ class Game:
 		self.rockets = {}
 		self.blocks = {}
 		self.black_holes = {}
+		self.bg_image = pygame.image.load("background.png").convert()
 		self.asteroid_image = pygame.image.load("asteroid.png").convert_alpha()
-		self.sun_image = pygame.image.load("sun.png")
+		self.sun_image = pygame.image.load("sun2.png").convert_alpha()
 		self.Earth = pygame.image.load("Earth.png").convert_alpha()
-		self.black_hole_image = pygame.image.load("black_hole.png")
-		self.Earth = pygame.transform.scale(self.Earth, (20, 20))
+		self.black_hole_image = pygame.image.load("black_hole.png").convert_alpha()
+		self.block_image = pygame.image.load("dust_cloud.png").convert_alpha()
+		self.Earth = pygame.transform.rotozoom(self.Earth, 0, 0.01666666666)
+		self.bg = pygame.transform.rotozoom(self.bg_image, 0, 0.5)
+
 		self.counter = 0
 		self.last_shot = 0
 		self.delay = 800
@@ -263,6 +267,7 @@ class Game:
 			if len(positions) > 0 and positions[0][2] <= 0:
 				del positions[0]
 
+
 	# def spawn_asteroid(self):
 	# 	rand = random.randint(40, windowWidth - 40)
 	# 	rand2 = random.randint(40, windowHeight - 40)
@@ -279,6 +284,7 @@ class Game:
 		asteroid = Asteroid(self, x, y, speed_x, speed_y, self.counter, self.asteroid_image, size)
 		self.asteroids[self.counter] = asteroid
 		self.counter += 1
+
 	def generate_asteroids(self, num):
 		initial_pos = []
 		for i in range(num):
@@ -315,7 +321,6 @@ class Game:
 		blocks_height = windowHeight // self.block_size
 		file = open("input.txt")
 		lines = [line.rstrip("\n").split(',') for line in file.readlines()]
-		print(blocks_height, blocks_width)
 		pattern = np.zeros((blocks_height, blocks_width))
 		for j in range(blocks_height):
 			for i in range(blocks_width):
@@ -326,7 +331,7 @@ class Game:
 		for j in range(len(pattern)):
 			for i in range(len(pattern[0])):
 				if pattern[j, i] == 1:
-					block = Block(self, i * self.block_size, j * self.block_size, self.counter, self.block_size)
+					block = Block(self, i * self.block_size, j * self.block_size, self.block_image, self.counter, self.block_size)
 					self.blocks[self.counter] = block
 					self.counter += 1
 
@@ -360,6 +365,8 @@ class Game:
 			mouse_press = pygame.mouse.get_pressed()[0]
 			if keys[pygame.K_ESCAPE]:
 				exit()
+			if keys[pygame.K_q]:
+				exit()
 			if keys[pygame.K_u]:
 				exit()
 			if mouse_press and pygame.time.get_ticks() - self.last_shot >= self.delay:
@@ -387,6 +394,8 @@ class Game:
 				if event.type == pygame.QUIT:
 					exit()
 			self.window.fill((0, 0, 0, 100))
+
+			self.window.blit(self.bg, (0,0))
 			self.window.blit(self.Earth, (12, windowHeight // 2 - 10))
 			self.sun.draw()
 
@@ -414,8 +423,8 @@ class Game:
 				for j in self.blocks:
 					other = self.blocks[j]
 					if self.check_collisions(each.rect(), other.rect()) or self.check_collisions(other.rect(), each.rect()):
-						each.dx *= -1
-						each.dy *= -1
+						each.dx *= 0.5
+						each.dy *= 0.5
 						object_removal.add(other.id)
 			for b in self.black_holes:
 				black_hole = self.black_holes[b]
@@ -558,6 +567,8 @@ class Game:
 			keys = pygame.key.get_pressed()
 			if keys[pygame.K_ESCAPE]:
 				exit()
+			if keys[pygame.K_q]:
+				exit()
 			if keys[pygame.K_s]:
 				return
 			
@@ -588,7 +599,6 @@ class Game:
 				flag = True
 
 		lines = np.array(lines)
-		print(lines)
 
 		lines = np.sort(lines, axis=1)
 
@@ -596,6 +606,8 @@ class Game:
 		while True:
 			keys = pygame.key.get_pressed()
 			if keys[pygame.K_ESCAPE]:
+				exit()
+			if keys[pygame.K_q]:
 				exit()
 			if keys[pygame.K_s]:
 				return leaderboard
